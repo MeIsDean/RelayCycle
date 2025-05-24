@@ -3,9 +3,9 @@ import axios from "axios";
 import JSZip from "jszip";
 
 // API configuration
-const API_BASE = process.env.REACT_APP_API_URL || "http://159.69.47.171:4000";
+const API_BASE = process.env.REACT_APP_API_URL || "https://159.69.47.171:4000";
 const API = `${API_BASE}/api`;
-const WS_URL = process.env.REACT_APP_WS_URL || "ws://159.69.47.171:4001";
+const WS_URL = process.env.REACT_APP_WS_URL || "wss://159.69.47.171:4001";
 
 // Add axios default configuration
 axios.defaults.withCredentials = true;

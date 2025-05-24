@@ -4,9 +4,16 @@ const fs = require("fs");
 const path = require("path");
 const cors = require("cors");
 const WebSocket = require('ws');
+const https = require('https');
 
 const app = express();
 const PORT = 4000;
+
+// SSL/TLS configuration
+const sslOptions = {
+    key: fs.readFileSync(path.join(__dirname, 'ssl', 'private.key')),
+    cert: fs.readFileSync(path.join(__dirname, 'ssl', 'certificate.crt'))
+};
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
@@ -42,8 +49,11 @@ app.use(cors({
 
 app.use(express.json());
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ port: 4001 });
+// Create HTTPS server
+const server = https.createServer(sslOptions, app);
+
+// Create WebSocket server with HTTPS
+const wss = new WebSocket.Server({ server });
 
 // Broadcast function for WebSocket
 function broadcast(data) {
@@ -584,5 +594,5 @@ app.get("/api/debug", (req, res) => {
     });
 });
 
-
-app.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
+// Update server listen
+server.listen(PORT, () => console.log(`Server running on https://localhost:${PORT}`));
