@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1747967791406,
+    "name": "licht",
+    "durationMs": 10000,
+    "startPoint": 0,
+    "points": [
+      {
+        "timeMs": 0,
+        "actions": [
+          {
+            "type": "relay",
+            "relayId": "1",
+            "on": true
+          }
+        ]
+      },
+      {
+        "timeMs": 5000,
+        "actions": [
+          {
+            "type": "relay",
+            "relayId": "1",
+            "on": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 1748029449611,
+    "name": "Wasser",
+    "durationMs": 60000,
+    "startPoint": 0,
+    "points": [
+      {
+        "timeMs": 0,
+        "actions": [
+          {
+            "type": "relay",
+            "relayId": "2",
+            "on": true
+          }
+        ]
+      },
+      {
+        "timeMs": 10000,
+        "actions": [
+          {
+            "type": "relay",
+            "relayId": "2",
+            "on": false
+          }
+        ]
+      }
+    ]
+  }
+]
