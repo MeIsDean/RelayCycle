@@ -605,8 +605,15 @@ app.get("/api/debug", (req, res) => {
     });
 });
 
+// Add error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({ error: err.message });
+});
+
 // Update server listen
 server.listen(PORT, () => {
     const protocol = server instanceof https.Server ? 'https' : 'http';
     console.log(`Server running on ${protocol}://localhost:${PORT}`);
+    console.log('Allowed origins:', allowedOrigins);
 });

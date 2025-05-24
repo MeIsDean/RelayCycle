@@ -3,19 +3,16 @@ import axios from "axios";
 import JSZip from "jszip";
 
 // API configuration
-const getProtocol = () => {
-    if (typeof window !== 'undefined') {
-        // Use HTTP for IP addresses, HTTPS for domains
-        const hostname = window.location.hostname;
-        const isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
-        return isIP ? 'http:' : window.location.protocol;
-    }
-    return 'http:';
-};
-
-const API_BASE = process.env.REACT_APP_API_URL || `${getProtocol()}//159.69.47.171:4000`;
+const isVercel = window.location.hostname.includes('vercel.app');
+const API_BASE = process.env.REACT_APP_API_URL || (isVercel 
+    ? "https://159.69.47.171:4000"  // Force HTTPS for Vercel
+    : "http://159.69.47.171:4000"   // Use HTTP for local development
+);
 const API = `${API_BASE}/api`;
-const WS_URL = process.env.REACT_APP_WS_URL || `${getProtocol() === 'https:' ? 'wss:' : 'ws:'}//159.69.47.171:4001`;
+const WS_URL = process.env.REACT_APP_WS_URL || (isVercel
+    ? "wss://159.69.47.171:4001"    // Force WSS for Vercel
+    : "ws://159.69.47.171:4001"     // Use WS for local development
+);
 
 // Add axios default configuration
 axios.defaults.withCredentials = true;
