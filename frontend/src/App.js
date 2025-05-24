@@ -204,7 +204,7 @@ function RelaysTab() {
     axios.get(`${API}/relays`).then(res => setRelays(res.data));
 
     // Set up WebSocket connection
-    const ws = new WebSocket('ws://localhost:4001');
+    const ws = new WebSocket('ws://159.69.47.171:4001');
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
