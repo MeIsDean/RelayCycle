@@ -5,15 +5,32 @@ const path = require("path");
 const cors = require("cors");
 const WebSocket = require('ws');
 const https = require('https');
+const http = require('http');
 
 const app = express();
 const PORT = 4000;
 
 // SSL/TLS configuration
-const sslOptions = {
-    key: fs.readFileSync(path.join(__dirname, 'ssl', 'private.key')),
-    cert: fs.readFileSync(path.join(__dirname, 'ssl', 'certificate.crt'))
-};
+let server;
+let wss;
+
+try {
+    const sslOptions = {
+        key: fs.readFileSync(path.join(__dirname, 'ssl', 'private.key')),
+        cert: fs.readFileSync(path.join(__dirname, 'ssl', 'certificate.crt'))
+    };
+    
+    // Create HTTPS server
+    server = https.createServer(sslOptions, app);
+    wss = new WebSocket.Server({ server });
+    console.log('HTTPS server initialized');
+} catch (error) {
+    console.log('SSL certificates not found, falling back to HTTP');
+    // Create HTTP server
+    server = http.createServer(app);
+    wss = new WebSocket.Server({ server });
+    console.log('HTTP server initialized');
+}
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
@@ -48,12 +65,6 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// Create HTTPS server
-const server = https.createServer(sslOptions, app);
-
-// Create WebSocket server with HTTPS
-const wss = new WebSocket.Server({ server });
 
 // Broadcast function for WebSocket
 function broadcast(data) {
@@ -595,4 +606,7 @@ app.get("/api/debug", (req, res) => {
 });
 
 // Update server listen
-server.listen(PORT, () => console.log(`Server running on https://localhost:${PORT}`));
+server.listen(PORT, () => {
+    const protocol = server instanceof https.Server ? 'https' : 'http';
+    console.log(`Server running on ${protocol}://localhost:${PORT}`);
+});

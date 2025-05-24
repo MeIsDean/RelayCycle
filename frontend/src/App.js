@@ -3,9 +3,16 @@ import axios from "axios";
 import JSZip from "jszip";
 
 // API configuration
-const API_BASE = process.env.REACT_APP_API_URL || "https://159.69.47.171:4000";
+const getProtocol = () => {
+    if (typeof window !== 'undefined') {
+        return window.location.protocol;
+    }
+    return 'http:';
+};
+
+const API_BASE = process.env.REACT_APP_API_URL || `${getProtocol()}//159.69.47.171:4000`;
 const API = `${API_BASE}/api`;
-const WS_URL = process.env.REACT_APP_WS_URL || "wss://159.69.47.171:4001";
+const WS_URL = process.env.REACT_APP_WS_URL || `${getProtocol() === 'https:' ? 'wss:' : 'ws:'}//159.69.47.171:4001`;
 
 // Add axios default configuration
 axios.defaults.withCredentials = true;
