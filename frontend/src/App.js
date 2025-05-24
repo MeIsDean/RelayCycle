@@ -5,7 +5,10 @@ import JSZip from "jszip";
 // API configuration
 const getProtocol = () => {
     if (typeof window !== 'undefined') {
-        return window.location.protocol;
+        // Use HTTP for IP addresses, HTTPS for domains
+        const hostname = window.location.hostname;
+        const isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+        return isIP ? 'http:' : window.location.protocol;
     }
     return 'http:';
 };
