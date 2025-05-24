@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import JSZip from "jszip";
 
-const API = "http://localhost:4000/api";
+const API = "http://159.69.47.171:4000/api";
 
 function App() {
   const [tab, setTab] = useState("cam");
