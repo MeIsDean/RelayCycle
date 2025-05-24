@@ -8,12 +8,34 @@ const WebSocket = require('ws');
 const app = express();
 const PORT = 4000;
 
+// CORS configuration
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',') 
+    : ['http://localhost:3000', 'https://*.vercel.app'];
+
 app.use(cors({
-    origin: [
-        "https://deinprojekt.vercel.app", // Vercel-Frontend-URL hier eintragen!
-        "http://localhost:3000"           // Optional: Für lokale Tests
-    ],
-    credentials: true,  // falls Cookies oder Auth genutzt wird
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // Check if origin is in allowedOrigins
+        const isAllowed = allowedOrigins.some(allowedOrigin => {
+            if (allowedOrigin.includes('*')) {
+                // Handle wildcard domains
+                const pattern = new RegExp('^' + allowedOrigin.replace('*', '.*') + '$');
+                return pattern.test(origin);
+            }
+            return allowedOrigin === origin;
+        });
+        
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            console.log('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));

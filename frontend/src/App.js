@@ -2,7 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import JSZip from "jszip";
 
-const API = "http://159.69.47.171:4000/api";
+// API configuration
+const API_BASE = process.env.REACT_APP_API_URL || "http://159.69.47.171:4000";
+const API = `${API_BASE}/api`;
+const WS_URL = process.env.REACT_APP_WS_URL || "ws://159.69.47.171:4001";
+
+// Add axios default configuration
+axios.defaults.withCredentials = true;
 
 function App() {
   const [tab, setTab] = useState("cam");
@@ -204,7 +210,7 @@ function RelaysTab() {
     axios.get(`${API}/relays`).then(res => setRelays(res.data));
 
     // Set up WebSocket connection
-    const ws = new WebSocket('ws://159.69.47.171:4001');
+    const ws = new WebSocket(WS_URL);
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
