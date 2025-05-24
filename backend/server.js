@@ -534,13 +534,24 @@ app.delete("/api/cycle/:id", (req, res) => {
 });
 
 // ---------- Debug ----------
+// --- Debug Tab ---
 app.get("/api/debug", (req, res) => {
+    // Zirkuläre Referenzen (wie timer) entfernen:
+    const cleanRunningCycles = {};
+    for (const [id, state] of Object.entries(runningCycles)) {
+        // Entferne "timer" und alle nicht-JSON-Elemente
+        const { timer, ...rest } = state;
+        // nextAction evtl. auch bereinigen, falls dort später komplexe Objekte auftauchen!
+        cleanRunningCycles[id] = { ...rest };
+    }
+
     res.json({
         relays,
         cycles,
-        runningCycles,
+        runningCycles: cleanRunningCycles,
         timestamp: Date.now()
     });
 });
+
 
 app.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
