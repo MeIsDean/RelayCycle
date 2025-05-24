@@ -8,7 +8,16 @@ const WebSocket = require('ws');
 const app = express();
 const PORT = 4000;
 
-app.use(cors());
+app.use(cors({
+    origin: [
+        "https://deinprojekt.vercel.app", // Vercel-Frontend-URL hier eintragen!
+        "http://localhost:3000"           // Optional: Für lokale Tests
+    ],
+    credentials: true,  // falls Cookies oder Auth genutzt wird
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
 app.use(express.json());
 
 // Create WebSocket server
