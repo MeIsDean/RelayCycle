@@ -6,9 +6,15 @@ const cors = require("cors");
 const WebSocket = require('ws');
 const https = require('https');
 const http = require('http');
+const axios = require('axios'); // Neu: Für GET-Request und Image-Download
 
 const app = express();
 const PORT = 4000;
+
+// ==== ESP32-SIM CONFIGURATION ====
+const ESP_SIM_URL = "http://192.168.8.100/capture"; // <-- DEINE ESP32-SIM-IP ODER DOMAIN
+const ESP_SIM_CAMERA_NAME = "esp_sim"; // Der Kamera-Name im Upload-Folder
+const ESP_POLL_INTERVAL = 10000; // 10 Sekunden
 
 // SSL/TLS configuration
 let server;
@@ -19,7 +25,7 @@ try {
         key: fs.readFileSync(path.join(__dirname, 'ssl', 'private.key')),
         cert: fs.readFileSync(path.join(__dirname, 'ssl', 'certificate.crt'))
     };
-    
+
     // Create HTTPS server
     server = https.createServer(sslOptions, app);
     wss = new WebSocket.Server({ server });
@@ -33,35 +39,13 @@ try {
 }
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',') 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
     : ['http://localhost:3000', 'https://*.vercel.app'];
 
 app.use(cors({
-    origin: function(origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        
-        // Check if origin is in allowedOrigins
-        const isAllowed = allowedOrigins.some(allowedOrigin => {
-            if (allowedOrigin.includes('*')) {
-                // Handle wildcard domains
-                const pattern = new RegExp('^' + allowedOrigin.replace('*', '.*') + '$');
-                return pattern.test(origin);
-            }
-            return allowedOrigin === origin;
-        });
-        
-        if (isAllowed) {
-            callback(null, true);
-        } else {
-            console.log('Blocked by CORS:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    origin: true,           // <-- allows all origins (for dev/test)
+    credentials: true
 }));
 
 app.use(express.json());
@@ -122,10 +106,10 @@ function saveData() {
     try {
         // Save relays
         fs.writeFileSync(RELAYS_FILE, JSON.stringify(relays, null, 2));
-        
+
         // Save cycles
         fs.writeFileSync(CYCLES_FILE, JSON.stringify(cycles, null, 2));
-        
+
         // Save states (without timer and nextAction)
         const states = Object.entries(runningCycles).reduce((acc, [cycleId, state]) => {
             acc[cycleId] = {
@@ -250,6 +234,36 @@ app.get("/api/camera/:cam/:file", (req, res) => {
     if (!fs.existsSync(file)) return res.status(404).json({error: "Not found"});
     res.sendFile(file);
 });
+
+// ------------------- AUTOMATISCHER POLL ESP32 MIT SIM -------------------
+async function pollEspCamera() {
+    try {
+        const response = await axios({
+            method: 'get',
+            url: ESP_SIM_URL,
+            responseType: 'arraybuffer',
+            timeout: 8000 // 8s Timeout
+        });
+        if (response.status === 200 && response.headers['content-type'] && response.headers['content-type'].includes('image')) {
+            // Stelle sicher, dass der Kamera-Ordner existiert
+            const camPath = path.join(CAMERA_DIR, ESP_SIM_CAMERA_NAME);
+            if (!fs.existsSync(camPath)) {
+                fs.mkdirSync(camPath, {recursive: true});
+            }
+            // Speichere Bild mit Zeitstempel
+            const timestamp = Date.now();
+            const imgPath = path.join(camPath, `${timestamp}.jpg`);
+            fs.writeFileSync(imgPath, response.data);
+            console.log(`[ESP_SIM] Bild gespeichert: ${imgPath}`);
+        } else {
+            console.log(`[ESP_SIM] Kein Bild erhalten (Status: ${response.status})`);
+        }
+    } catch (err) {
+        console.log(`[ESP_SIM] Fehler beim Abfragen:`, err.message);
+    }
+}
+// Poll alle 10 Sekunden starten
+setInterval(pollEspCamera, ESP_POLL_INTERVAL);
 
 // ---------- Relais ----------
 app.get("/api/relays", (req, res) => res.json(relays));
@@ -411,7 +425,7 @@ function startCycle(cycle, restart = false) {
                 // Find next action, considering the start point
         const nextPoint = cycle.points.find(p => p.timeMs > (cycleTime + cycle.startPoint) % cycle.durationMs);
         if (nextPoint) {
-            const nextActionTime = state.startTime + Math.floor((now - state.startTime) / cycle.durationMs) * cycle.durationMs + 
+            const nextActionTime = state.startTime + Math.floor((now - state.startTime) / cycle.durationMs) * cycle.durationMs +
                                  ((nextPoint.timeMs - cycle.startPoint + cycle.durationMs) % cycle.durationMs);
             state.nextAction = {
                 time: nextActionTime,
@@ -575,10 +589,10 @@ app.delete("/api/cycle/:id", (req, res) => {
     const cycleId = req.params.id;
     const index = cycles.findIndex(c => c.id == cycleId);
     if (index === -1) return res.status(404).json({error: "Not found"});
-    
+
     // Stop the cycle if it's running
     stopCycle(cycleId);
-    
+
     // Remove from cycles array
     cycles.splice(index, 1);
     saveData();

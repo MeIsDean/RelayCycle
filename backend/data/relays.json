@@ -15,6 +15,6 @@
     "inverted": false,
     "name": "Pumpe",
     "color": "#1219e2",
-    "status": false
+    "status": true
   }
 ]
