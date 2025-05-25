@@ -1,6 +1,8 @@
+
 #include <WiFi.h>
 #include <WiFiAP.h>
 #include <HTTPClient.h>
+#define TINY_GSM_MODEM_SIM800
 #include <TinyGsmClient.h>
 #include <SoftwareSerial.h>
 

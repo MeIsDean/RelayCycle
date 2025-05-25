@@ -12,9 +12,69 @@ const app = express();
 const PORT = 4000;
 
 // ==== ESP32-SIM CONFIGURATION ====
-const ESP_SIM_URL = "http://192.168.8.100/capture"; // <-- DEINE ESP32-SIM-IP ODER DOMAIN
+let ESP_SIM_URL = null; // Will be set dynamically
 const ESP_SIM_CAMERA_NAME = "esp_sim"; // Der Kamera-Name im Upload-Folder
-const ESP_POLL_INTERVAL = 10000; // 10 Sekunden
+const ESP_POLL_INTERVAL = 30000; // 30 Sekunden
+
+// Load ESP32-SIM URL from config file
+const ESP_CONFIG_FILE = path.join(DATA_DIR, "esp_config.json");
+try {
+    if (fs.existsSync(ESP_CONFIG_FILE)) {
+        ESP_SIM_URL = fs.readFileSync(ESP_CONFIG_FILE, 'utf8').trim();
+        console.log(`[ESP_SIM] Loaded URL from config: ${ESP_SIM_URL}`);
+    }
+} catch (error) {
+    console.error("[ESP_SIM] Error loading config:", error);
+}
+
+// Endpoint for ESP32-SIM to register its URL
+app.post("/api/esp-sim/register", (req, res) => {
+    // Get the IP address of the requesting device
+    const ip = req.ip || req.connection.remoteAddress;
+    const url = `http://${ip}/capture`;
+
+    // Store the URL in config file
+    try {
+        fs.writeFileSync(ESP_CONFIG_FILE, url);
+        ESP_SIM_URL = url;
+        console.log(`[ESP_SIM] URL registered: ${url}`);
+        res.json({ success: true, url });
+    } catch (error) {
+        console.error("[ESP_SIM] Error saving config:", error);
+        res.status(500).json({ error: "Failed to save configuration" });
+    }
+});
+
+async function pollEspCamera() {
+    if (!ESP_SIM_URL) {
+        console.log("[ESP_SIM] No URL configured, skipping poll");
+        return;
+    }
+
+    try {
+        const response = await axios({
+            method: 'get',
+            url: ESP_SIM_URL,
+            responseType: 'arraybuffer',
+            timeout: 12000 // Timeout ggf. anpassen!
+        });
+        if (response.status === 200 && response.headers['content-type'] && response.headers['content-type'].includes('image')) {
+            const camPath = path.join(CAMERA_DIR, ESP_SIM_CAMERA_NAME);
+            if (!fs.existsSync(camPath)) {
+                fs.mkdirSync(camPath, {recursive: true});
+            }
+            const timestamp = Date.now();
+            const imgPath = path.join(camPath, `${timestamp}.jpg`);
+            fs.writeFileSync(imgPath, response.data);
+            console.log(`[ESP_SIM] Bild gespeichert: ${imgPath}`);
+        } else {
+            console.log(`[ESP_SIM] Kein Bild erhalten (Status: ${response.status})`);
+        }
+    } catch (err) {
+        console.log(`[ESP_SIM] Fehler beim Abfragen:`, err.message);
+    }
+}
+setInterval(pollEspCamera, ESP_POLL_INTERVAL);
 
 // SSL/TLS configuration
 let server;
@@ -234,36 +294,6 @@ app.get("/api/camera/:cam/:file", (req, res) => {
     if (!fs.existsSync(file)) return res.status(404).json({error: "Not found"});
     res.sendFile(file);
 });
-
-// ------------------- AUTOMATISCHER POLL ESP32 MIT SIM -------------------
-async function pollEspCamera() {
-    try {
-        const response = await axios({
-            method: 'get',
-            url: ESP_SIM_URL,
-            responseType: 'arraybuffer',
-            timeout: 8000 // 8s Timeout
-        });
-        if (response.status === 200 && response.headers['content-type'] && response.headers['content-type'].includes('image')) {
-            // Stelle sicher, dass der Kamera-Ordner existiert
-            const camPath = path.join(CAMERA_DIR, ESP_SIM_CAMERA_NAME);
-            if (!fs.existsSync(camPath)) {
-                fs.mkdirSync(camPath, {recursive: true});
-            }
-            // Speichere Bild mit Zeitstempel
-            const timestamp = Date.now();
-            const imgPath = path.join(camPath, `${timestamp}.jpg`);
-            fs.writeFileSync(imgPath, response.data);
-            console.log(`[ESP_SIM] Bild gespeichert: ${imgPath}`);
-        } else {
-            console.log(`[ESP_SIM] Kein Bild erhalten (Status: ${response.status})`);
-        }
-    } catch (err) {
-        console.log(`[ESP_SIM] Fehler beim Abfragen:`, err.message);
-    }
-}
-// Poll alle 10 Sekunden starten
-setInterval(pollEspCamera, ESP_POLL_INTERVAL);
 
 // ---------- Relais ----------
 app.get("/api/relays", (req, res) => res.json(relays));
